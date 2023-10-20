@@ -1,60 +1,68 @@
-import Adafruit_DHT
-import RPi.GPIO as GPIO
-import time
+#include <wiringPi.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <signal.h>
+#include <DHT.h>
 
-# Thiết lập chân GPIO cho cảm biến DHT22 và LED RGB
-DHT_PIN = 4  # Chân GPIO dành cho cảm biến DHT22
-LED_PIN_R = 17  # Chân GPIO dành cho đèn LED RGB màu đỏ
-LED_PIN_G = 27  # Chân GPIO dành cho đèn LED RGB màu xanh
-LED_PIN_B = 22  # Chân GPIO dành cho đèn LED RGB màu xanh dương
+// Định nghĩa chân GPIO
+#define DHTPIN 4      // Chân GPIO dành cho cảm biến DHT22
+#define LED_PIN_R 0   // Chân GPIO dành cho đèn LED RGB màu đỏ
+#define LED_PIN_G 2   // Chân GPIO dành cho đèn LED RGB màu xanh
+#define LED_PIN_B 3   // Chân GPIO dành cho đèn LED RGB màu xanh dương
 
-# Thiết lập chế độ chân GPIO
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(LED_PIN_R, GPIO.OUT)
-GPIO.setup(LED_PIN_G, GPIO.OUT)
-GPIO.setup(LED_PIN_B, GPIO.OUT)
+// Khởi tạo cảm biến DHT22
+#define DHTTYPE DHT22
 
-# Hàm đọc giá trị từ cảm biến DHT22
-def read_dht22():
-    humidity, temperature = Adafruit_DHT.read_retry(Adafruit_DHT.DHT22, DHT_PIN)
-    return humidity, temperature
+// Khởi tạo đèn LED RGB
+void setupLED() {
+    pinMode(LED_PIN_R, OUTPUT);
+    pinMode(LED_PIN_G, OUTPUT);
+    pinMode(LED_PIN_B, OUTPUT);
+}
 
-# Hàm điều khiển đèn LED theo giá trị nhiệt độ
-def control_led(temperature):
-    if temperature < 20:
-        # Nhiệt độ dưới 20 độ Celsius: Đèn LED màu xanh
-        GPIO.output(LED_PIN_R, GPIO.LOW)
-        GPIO.output(LED_PIN_G, GPIO.HIGH)
-        GPIO.output(LED_PIN_B, GPIO.LOW)
-    elif 20 <= temperature < 25:
-        # Nhiệt độ từ 20 đến 24 độ Celsius: Đèn LED màu vàng
-        GPIO.output(LED_PIN_R, GPIO.HIGH)
-        GPIO.output(LED_PIN_G, GPIO.HIGH)
-        GPIO.output(LED_PIN_B, GPIO.LOW)
-    else:
-        # Nhiệt độ từ 25 độ Celsius trở lên: Đèn LED màu đỏ
-        GPIO.output(LED_PIN_R, GPIO.HIGH)
-        GPIO.output(LED_PIN_G, GPIO.LOW)
-        GPIO.output(LED_PIN_B, GPIO.LOW)
+// Hàm điều khiển đèn LED theo giá trị nhiệt độ
+void controlLED(float temperature) {
+    if (temperature < 20) {
+        digitalWrite(LED_PIN_R, LOW);
+        digitalWrite(LED_PIN_G, HIGH);
+        digitalWrite(LED_PIN_B, LOW);
+    } else if (temperature >= 20 && temperature < 25) {
+        digitalWrite(LED_PIN_R, HIGH);
+        digitalWrite(LED_PIN_G, HIGH);
+        digitalWrite(LED_PIN_B, LOW);
+    } else {
+        digitalWrite(LED_PIN_R, HIGH);
+        digitalWrite(LED_PIN_G, LOW);
+        digitalWrite(LED_PIN_B, LOW);
+    }
+}
 
-try:
-    while True:
-        # Đọc giá trị từ cảm biến DHT22
-        humidity, temperature = read_dht22()
+int main(void) {
+    if (wiringPiSetup() == -1) {
+        printf("Không thể thiết lập WiringPi. Hãy chạy với quyền sudo.\n");
+        return 1;
+    }
 
-        # Kiểm tra xem giá trị đọc được có hợp lý không (không bằng None)
-        if humidity is not None and temperature is not None:
-            print(f"Nhiệt độ: {temperature}°C, Độ ẩm: {humidity}%")
-            
-            # Điều khiển đèn LED dựa trên giá trị nhiệt độ
-            control_led(temperature)
-        else:
-            print("Không thể đọc giá trị từ cảm biến.")
+    DHT dht(DHTPIN, DHTTYPE);
+    setupLED();
 
-        # Chờ 2 giây trước khi đọc giá trị tiếp theo
-        time.sleep(2)
+    while (true) {
+        float humidity = dht.readHumidity();
+        float temperature = dht.readTemperature();
 
-except KeyboardInterrupt:
-    # Khi nhấn Ctrl + C, thoát chương trình và dọn sạch GPIO
-    GPIO.cleanup()
-    print("Chương trình đã dừng.")
+        if (!isnan(humidity) && !isnan(temperature)) {
+            printf("Nhiệt độ: %.2f°C, Độ ẩm: %.2f%%\n", temperature, humidity);
+            controlLED(temperature);
+        } else {
+            printf("Không thể đọc giá trị từ cảm biến.\n");
+        }
+
+        delay(2000);  // Chờ 2 giây trước khi đọc giá trị tiếp theo
+    }
+
+    return 0;
+}
