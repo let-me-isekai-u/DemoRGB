@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>RGB Control</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>RGB Control</h1>
+    <button id="red">Red</button>
+    <button id="green">Green</button>
+    <button id="blue">Blue</button>
+
+    <script>
+        $(document).ready(function() {
+            $("#red").click(function() {
+                $.post("/update", {color: "red"});
+            });
+
+            $("#green").click(function() {
+                $.post("/update", {color: "green"});
+            });
+
+            $("#blue").click(function() {
+                $.post("/update", {color: "blue"});
+            });
+        });
+    </script>
+</body>
+</html>
